@@ -168,6 +168,10 @@
 		"Name": [
 			null,
 			"string"
+		],
+		"Connect": [
+			"url string",
+			"(Browser, error)"
 		]
 	},
 	"ConsoleMessage": {
