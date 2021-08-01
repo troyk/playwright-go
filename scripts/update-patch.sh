@@ -1,12 +1,15 @@
 #!/bin/bash
 
+set -e
+
+BRANCH_NAME="playwright-build"
+SCRIPTS_DIR="$(dirname "$0")"
+
 echo "Creating patch..."
 
-cd "$(dirname "$0")"
+cd "$SCRIPTS_DIR/../playwright"
 
-cd ../playwright 
-
-git diff --full-index --src-prefix="a/playwright/" --dst-prefix="b/playwright/" > ../patches/main.patch $(git rev-parse HEAD^1)..$(git rev-parse HEAD)
+git diff --full-index $(git rev-parse HEAD^1)..$(git rev-parse HEAD) > ../patches/main.patch
 
 git reset --hard $(git rev-parse HEAD^1)
 
