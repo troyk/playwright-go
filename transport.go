@@ -28,9 +28,13 @@ type pipeTransport struct {
 }
 
 type webSocketTransport struct {
+	eventEmitter
 	url      string
 	conn     *websocket.Conn
 	dispatch func(msg *message)
+	stopped  bool
+	rLock    sync.Mutex
+	err      error
 }
 
 func (t *webSocketTransport) Start() error {
@@ -39,17 +43,28 @@ func (t *webSocketTransport) Start() error {
 		return fmt.Errorf("could not connect to websocket: %w", err)
 	}
 	t.conn = conn
+
 	for {
 		msg := &message{}
 		err := t.conn.ReadJSON(msg)
 		if err != nil {
-			return fmt.Errorf("could not read json: %w", err)
+			t.rLock.Lock()
+			defer t.rLock.Unlock()
+			if t.stopped {
+				return nil
+			}
+			t.err = err
 		}
 		t.dispatch(msg)
 	}
 }
 
 func (t *webSocketTransport) Send(message map[string]interface{}) error {
+	if t.err != nil {
+		t.stopped = true
+		t.Emit("close")
+		return t.err
+	}
 	if err := t.conn.WriteJSON(message); err != nil {
 		return fmt.Errorf("could not write json: %w", err)
 	}
@@ -61,7 +76,12 @@ func (t *webSocketTransport) SetDispatch(dispatch func(msg *message)) {
 }
 
 func (t *webSocketTransport) Stop() error {
-	return t.conn.Close()
+	t.rLock.Lock()
+	defer t.rLock.Unlock()
+	t.stopped = true
+	t.conn.Close()
+	t.Emit("close")
+	return t.err
 }
 
 func (t *pipeTransport) Start() error {
@@ -146,7 +166,9 @@ func newPipeTransport(stdin io.WriteCloser, stdout io.ReadCloser) transport {
 	}
 }
 func newWebSocketTransport(url string) transport {
-	return &webSocketTransport{
+	t := &webSocketTransport{
 		url: url,
 	}
+	t.initEventEmitter()
+	return t
 }

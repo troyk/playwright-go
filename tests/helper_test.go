@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -140,7 +142,11 @@ type remoteServer struct {
 }
 
 func newRemoteServer() *remoteServer {
-	cmd := exec.Command("playwright", "launch-server", browserName)
+	driver, err := playwright.NewDriver(&playwright.RunOptions{})
+	if err != nil {
+		log.Fatalf("could not start Playwright: %v", err)
+	}
+	cmd := exec.Command(driver.DriverBinaryLocation, "launch-server", browserName)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatalf("could not get stdout pipe: %v", err)
@@ -151,17 +157,26 @@ func newRemoteServer() *remoteServer {
 	}
 	scanner := bufio.NewReader(stdout)
 	url, err := scanner.ReadString('\n')
+	url = strings.TrimRight(url, "\n")
 	if err != nil {
 		log.Fatalf("could not read url: %v", err)
 	}
 	return &remoteServer{
-		url: strings.TrimRight(url, "\n"),
+		url: url,
 		cmd: cmd,
 	}
 }
 
 func (s *remoteServer) Close() {
-	_ = s.cmd.Process.Kill()
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("cmd", "/C", "taskkill", "/T", "/F", "/PID", strconv.Itoa(s.cmd.Process.Pid))
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+		return
+	}
+	s.cmd.Process.Kill()
+	s.cmd.Wait()
 }
 
 func (t *testServer) AfterEach() {
