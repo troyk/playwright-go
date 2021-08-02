@@ -1,6 +1,7 @@
 package playwright_test
 
 import (
+	"bufio"
 	"bytes"
 	"io/ioutil"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -130,6 +132,36 @@ type testServer struct {
 	PREFIX               string
 	EMPTY_PAGE           string
 	CROSS_PROCESS_PREFIX string
+}
+
+type remoteServer struct {
+	url string
+	cmd *exec.Cmd
+}
+
+func newRemoteServer() *remoteServer {
+	cmd := exec.Command("playwright", "launch-server", browserName)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatalf("could not get stdout pipe: %v", err)
+	}
+	err = cmd.Start()
+	if err != nil {
+		log.Fatalf("could not start server: %v", err)
+	}
+	scanner := bufio.NewReader(stdout)
+	url, err := scanner.ReadString('\n')
+	if err != nil {
+		log.Fatalf("could not read url: %v", err)
+	}
+	return &remoteServer{
+		url: strings.TrimRight(url, "\n"),
+		cmd: cmd,
+	}
+}
+
+func (s *remoteServer) Close() {
+	_ = s.cmd.Process.Kill()
 }
 
 func (t *testServer) AfterEach() {

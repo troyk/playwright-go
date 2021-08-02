@@ -40,7 +40,7 @@ func (b *browserTypeImpl) LaunchPersistentContext(userDataDir string, options ..
 	return fromChannel(channel).(*browserContextImpl), nil
 }
 func (b *browserTypeImpl) Connect(url string) (Browser, error) {
-	transport := newWebsocketTransport(url)
+	transport := newWebSocketTransport(url)
 	connection := newConnection(transport, transport.Stop)
 	go func() {
 		err := connection.Start()

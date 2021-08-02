@@ -13,7 +13,7 @@ import (
 	"gopkg.in/square/go-jose.v2/json"
 )
 
-type Transport interface {
+type transport interface {
 	Start() error
 	Stop() error
 	Send(message map[string]interface{}) error
@@ -27,13 +27,13 @@ type pipeTransport struct {
 	rLock    sync.Mutex
 }
 
-type websocketTransport struct {
+type webSocketTransport struct {
 	url      string
 	conn     *websocket.Conn
 	dispatch func(msg *message)
 }
 
-func (t *websocketTransport) Start() error {
+func (t *webSocketTransport) Start() error {
 	conn, _, err := websocket.DefaultDialer.Dial(t.url, nil)
 	if err != nil {
 		return fmt.Errorf("could not connect to websocket: %w", err)
@@ -49,20 +49,19 @@ func (t *websocketTransport) Start() error {
 	}
 }
 
-func (t *websocketTransport) Send(message map[string]interface{}) error {
+func (t *webSocketTransport) Send(message map[string]interface{}) error {
 	if err := t.conn.WriteJSON(message); err != nil {
 		return fmt.Errorf("could not write json: %w", err)
 	}
 	return nil
 }
 
-func (t *websocketTransport) SetDispatch(dispatch func(msg *message)) {
+func (t *webSocketTransport) SetDispatch(dispatch func(msg *message)) {
 	t.dispatch = dispatch
 }
 
-func (t *websocketTransport) Stop() error {
-	t.conn.Close()
-	return nil
+func (t *webSocketTransport) Stop() error {
+	return t.conn.Close()
 }
 
 func (t *pipeTransport) Start() error {
@@ -140,14 +139,14 @@ func (t *pipeTransport) Send(message map[string]interface{}) error {
 	return nil
 }
 
-func newPipeTransport(stdin io.WriteCloser, stdout io.ReadCloser) Transport {
+func newPipeTransport(stdin io.WriteCloser, stdout io.ReadCloser) transport {
 	return &pipeTransport{
 		stdout: stdout,
 		stdin:  stdin,
 	}
 }
-func newWebsocketTransport(url string) Transport {
-	return &websocketTransport{
+func newWebSocketTransport(url string) transport {
+	return &webSocketTransport{
 		url: url,
 	}
 }
