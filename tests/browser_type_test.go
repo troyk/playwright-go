@@ -136,6 +136,7 @@ func TestBrowserTypeConnectShouldEmitDisconnectedEvent(t *testing.T) {
 	page, err := browser2.NewPage()
 	require.NoError(t, err)
 	require.NoError(t, browser1.Close())
+	require.False(t, browser1.IsConnected())
 	require.Len(t, disconnected1.Get(), 1)
 	require.Len(t, disconnected2.Get(), 0)
 	remote_server.Close()
@@ -143,5 +144,6 @@ func TestBrowserTypeConnectShouldEmitDisconnectedEvent(t *testing.T) {
 	require.Panics(t, func() {
 		_, err = page.Title()
 	})
+	require.False(t, browser2.IsConnected())
 	require.Len(t, disconnected2.Get(), 1)
 }
