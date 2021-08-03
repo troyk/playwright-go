@@ -49,22 +49,28 @@ func (t *webSocketTransport) Start() error {
 		err := t.conn.ReadJSON(msg)
 		if err != nil {
 			t.rLock.Lock()
-			defer t.rLock.Unlock()
 			if t.stopped {
+				t.rLock.Unlock()
 				return nil
 			}
 			t.err = err
+			t.rLock.Unlock()
+			break
 		}
 		t.dispatch(msg)
 	}
+	return nil
 }
 
 func (t *webSocketTransport) Send(message map[string]interface{}) error {
+	t.rLock.Lock()
 	if t.err != nil {
 		t.stopped = true
+		t.rLock.Unlock()
 		t.Emit("close")
 		return t.err
 	}
+	t.rLock.Unlock()
 	if err := t.conn.WriteJSON(message); err != nil {
 		return fmt.Errorf("could not write json: %w", err)
 	}

@@ -172,11 +172,13 @@ func (s *remoteServer) Close() {
 		cmd := exec.Command("cmd", "/C", "taskkill", "/T", "/F", "/PID", strconv.Itoa(s.cmd.Process.Pid))
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		cmd.Run()
+		_ = cmd.Run()
 		return
 	}
-	s.cmd.Process.Kill()
-	s.cmd.Wait()
+	cmd := exec.Command("kill", "-9", strconv.Itoa(-s.cmd.Process.Pid))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	_ = cmd.Run()
 }
 
 func (t *testServer) AfterEach() {
